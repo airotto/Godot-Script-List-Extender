@@ -278,6 +278,8 @@ func update() -> void:
 					remove_idx_list.append(i)
 			continue
 		
+		if path == tr("Unsaved file."):
+			continue
 		
 		var script:Script = load(path)
 		if not script:
