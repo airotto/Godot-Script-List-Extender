@@ -1,6 +1,9 @@
 @tool
 extends EditorPlugin
 
+const DropdownAction = preload("uid://dnutmt8fmxxlg")
+var dropdown_action:DropdownAction
+
 var autoload_list:Array[String]
 
 var script_editor:ScriptEditor
@@ -142,6 +145,38 @@ func _enter_tree() -> void:
 	scripts_container.add_child(my_plugin_action_container)
 	scripts_container.move_child(my_plugin_action_container, 1)
 	
+	
+	
+	var menu_buttons_parent:Container = scripts_container.get_parent().get_parent().get_parent().find_child("*HBoxContainer*", false, false)
+	
+	var dropdowns:Array[MenuButton]
+	dropdowns.assign(menu_buttons_parent.find_children("*MenuButton*", "MenuButton", true, false) )
+	
+	dropdown_action = DropdownAction.new(dropdowns)
+	dropdown_action._enter()
+	
+
+
+
+func _exit_tree() -> void:
+	# Clean-up of the plugin goes here.
+	pass
+	if dropdown_action:
+		dropdown_action._exit()
+	my_plugin_action_container.queue_free()
+
+
+
+func _process(delta: float) -> void:
+	var has_meta:bool = false
+	if script_list.item_count > 0:
+		if script_list.get_item_tooltip(script_list.item_count - 1) == PLUGIN_UPDATED_ITEM_META:
+			has_meta = true
+	
+	if not has_meta:
+		update()
+
+
 
 
 func update_autoload() -> void:
@@ -232,23 +267,6 @@ func super_flat_button_theming(button:Button) -> void:
 	button.add_theme_color_override(&"icon_normal_color", Color.WEB_GRAY)
 	button.add_theme_color_override(&"icon_hover_color", Color.WEB_GRAY)
 
-
-
-func _exit_tree() -> void:
-	# Clean-up of the plugin goes here.
-	pass
-	
-	my_plugin_action_container.queue_free()
-
-
-func _process(delta: float) -> void:
-	var has_meta:bool = false
-	if script_list.item_count > 0:
-		if script_list.get_item_tooltip(script_list.item_count - 1) == PLUGIN_UPDATED_ITEM_META:
-			has_meta = true
-	
-	if not has_meta:
-		update()
 
 
 
@@ -379,47 +397,12 @@ func get_class_icon(script:Script) -> Texture2D:
 	if icon:
 		return icon
 	
-	var resource_class_name:StringName = get_extended_class(script)
+	var resource_class_name:StringName = script.get_instance_base_type()
 	
 	if script_list.has_theme_icon(resource_class_name, &"EditorIcons"):
 		return get_editor_icon(resource_class_name)
 	else:
 		return get_editor_icon(&"Object")
-
-
-
-func get_extended_class(script:Script) -> String:
-	if not script.has_source_code():
-		return ""
-	
-	for line:int in script.source_code.count("\n"):
-		var line_text := script.source_code.get_slice("\n",line)
-		
-		if line_text.remove_chars(" \t").is_empty():
-			continue
-		
-		const CAN_BEFORE_EXTENDS:Array[String] = [
-			"class_name",
-			"extends",
-			"@icon",
-			"@static_unload",
-			"@tool",
-			"@abstract",
-		]
-		var found:bool = false
-		for i in CAN_BEFORE_EXTENDS:
-			if line_text.begins_with(i):
-				found = true
-				break
-		
-		if not found:
-			return &"Object"
-		
-		
-		if line_text.contains("extends"):
-			return line_text.get_slice("extends ", 1)
-	
-	return ""
 
 
 var _editor_icon_cache:Dictionary[StringName, Texture2D]
