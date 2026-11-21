@@ -1,17 +1,17 @@
 @tool
 extends RefCounted
 
-var dropdowns:Array[MenuButton]
+var menu_button_list:Array[MenuButton]
 
 const ITEM_ID__OPEN_ALL_SCRIPTS:int = 839250
 const ITEM_ID__CLOSE_ADDON_SCRIPTS:int = 839251
 
-func _init(_dropdowns:Array[MenuButton]) -> void:
-	dropdowns = _dropdowns
+func _init(_menu_button_list:Array[MenuButton]) -> void:
+	menu_button_list = _menu_button_list
 
 func _enter() -> void:
 	
-	for i:MenuButton in dropdowns:
+	for i:MenuButton in menu_button_list:
 		if i.text == "File":
 			i.get_popup().add_item("Open All Scripts", ITEM_ID__OPEN_ALL_SCRIPTS)
 			i.get_popup().add_item("Close Addon Scripts", ITEM_ID__CLOSE_ADDON_SCRIPTS)
@@ -21,7 +21,7 @@ func _enter() -> void:
 
 
 func _exit() -> void:
-	for i:MenuButton in dropdowns:
+	for i:MenuButton in menu_button_list:
 		if i.text == "File":
 			for id:int in [ITEM_ID__OPEN_ALL_SCRIPTS, ITEM_ID__CLOSE_ADDON_SCRIPTS]:
 				var idx := i.get_popup().get_item_index(id)

@@ -6,14 +6,13 @@ var dropdown_action:DropdownAction
 
 var autoload_list:Array[String]
 
-var script_editor:ScriptEditor
-var scripts_container:BoxContainer
-var script_list:ItemList
+var script_editor:ScriptEditor: get = get_script_editor
+var scripts_container:BoxContainer: get = get_scripts_container
+var script_list:ItemList: get = get_script_list
 
+var my_plugin_action_container:Container: get = get_my_plugin_action_container
 
-var my_plugin_action_container:Container
-
-
+var class_icon_mode_button := CheckButton.new()
 var autoload_only_button := CheckButton.new()
 
 var filter_button_global_class := Button.new()
@@ -22,145 +21,40 @@ var filter_button_script := Button.new()
 var filter_button_text := Button.new()
 var filter_button_help := Button.new()
 
-
-var class_icon_mode_button := CheckButton.new()
+var script_list_menu:PopupMenu: get = get_script_list_menu
+const SEPATOR_ID:int = -100
+const SCRIPT_LIST_MENU_ADD_ITEM_MAP:Dictionary[String, int] = {
+	"Scene" : SEPATOR_ID,
+	"Copy Scene File Path" : 924948375,
+	"Copy Scene File UID" : 924948376,
+	"Open Scene" : 924948377,
+	"Scene Show in FileSystem" : 924948378,
+}
 
 const PLUGIN_UPDATED_ITEM_META:StringName = &""
 
-const BUTTONL_CONTROL_DESCRIPTION:String = "Ctrlを押しながらクリックすると単独でフィルタリング切り替えが出来ます
-Shiftを押しながらクリックすると全て有効に出来ます"
-
-func _enable_plugin() -> void:
-	# Add autoloads here.
-	pass
-
-
-func _disable_plugin() -> void:
-	# Remove autoloads here.
-	pass
-
 
 func _enter_tree() -> void:
-	# Initialization of the plugin goes here.
-	pass
-	
 	ProjectSettings.settings_changed.connect(update_autoload)
 	update_autoload()
-	
-	script_editor = EditorInterface.get_script_editor()
-	script_list = script_editor.find_child("*ItemList*", true, false)
-	
-	
-	var filter_scripts:LineEdit
-	for i:LineEdit in script_editor.find_children("*LineEdit*", "LineEdit", true, false):
-		if i.placeholder_text == "Filter Scripts":
-			filter_scripts = i
-			break
-	
-	
-	scripts_container = filter_scripts.get_parent()
-	
-	
-	my_plugin_action_container = HBoxContainer.new()
-	my_plugin_action_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	
-	
-	
-	
-	class_icon_mode_button.theme_type_variation = &"FlatButton"
-	class_icon_mode_button.icon = get_editor_icon(&"Object")
-	class_icon_mode_button.tooltip_text = "クラスアイコンモード"
-	class_icon_mode_button.toggle_mode = true
-	class_icon_mode_button.toggled.connect(update_with_reload_by_engine.unbind(1))
-	my_plugin_action_container.add_child(class_icon_mode_button)
-	
-	
-	
-	var scroll_container := ScrollContainer.new()
-	scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_container.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll_container.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	scroll_container.scroll_hint_mode = ScrollContainer.SCROLL_HINT_MODE_ALL
-	my_plugin_action_container.add_child(scroll_container)
-	
-	var h_box_container := HBoxContainer.new()
-	h_box_container.size_flags_horizontal = Control.SIZE_SHRINK_END | Control.SIZE_EXPAND
-	scroll_container.add_child(h_box_container)
-	
-	autoload_only_button.toggle_mode = true
-	autoload_only_button.set_pressed_no_signal(false)
-	super_flat_button_theming(autoload_only_button)
-	autoload_only_button.icon = get_editor_icon(&"Environment")
-	autoload_only_button.tooltip_text = "Autoloadのみ表示"
-	autoload_only_button.toggled.connect(update_with_reload_by_engine.unbind(1))
-	h_box_container.add_child(autoload_only_button)
-	
-	var separetor := VSeparator.new()
-	h_box_container.add_child(separetor)
-	
-	filter_button_global_class.toggle_mode = true
-	filter_button_global_class.set_pressed_no_signal(true)
-	super_flat_button_theming(filter_button_global_class)
-	filter_button_global_class.icon = get_editor_icon(&"CollisionShape3D")
-	filter_button_global_class.tooltip_text = "class_nameが宣言されているスクリプト" + "\n\n" + BUTTONL_CONTROL_DESCRIPTION
-	filter_button_global_class.toggled.connect(_on_filter_button_toggled.bind(filter_button_global_class))
-	h_box_container.add_child(filter_button_global_class)
-	
-	filter_button_scene.toggle_mode = true
-	filter_button_scene.set_pressed_no_signal(true)
-	super_flat_button_theming(filter_button_scene)
-	filter_button_scene.icon = get_editor_icon(&"PackedScene")
-	filter_button_scene.tooltip_text = "同じ階層に同じ名前のシーンがあるスクリプト" + "\n\n" + BUTTONL_CONTROL_DESCRIPTION
-	filter_button_scene.toggled.connect(_on_filter_button_toggled.bind(filter_button_scene))
-	h_box_container.add_child(filter_button_scene)
-	
-	filter_button_script.toggle_mode = true
-	filter_button_script.set_pressed_no_signal(true)
-	super_flat_button_theming(filter_button_script)
-	filter_button_script.icon = get_editor_icon(&"GDScript")
-	filter_button_script.tooltip_text = "他の項目に当てはまらないただのスクリプト" + "\n\n" + BUTTONL_CONTROL_DESCRIPTION
-	filter_button_script.toggled.connect(_on_filter_button_toggled.bind(filter_button_script))
-	h_box_container.add_child(filter_button_script)
-	
-	filter_button_text.toggle_mode = true
-	filter_button_text.set_pressed_no_signal(true)
-	super_flat_button_theming(filter_button_text)
-	filter_button_text.icon = get_editor_icon(&"TextFile")
-	filter_button_text.tooltip_text = "スクリプトではないただのテキストファイル" + "\n\n" + BUTTONL_CONTROL_DESCRIPTION
-	filter_button_text.toggled.connect(_on_filter_button_toggled.bind(filter_button_text))
-	h_box_container.add_child(filter_button_text)
-	
-	filter_button_help.toggle_mode = true
-	filter_button_help.set_pressed_no_signal(true)
-	super_flat_button_theming(filter_button_help)
-	filter_button_help.icon = get_editor_icon(&"Help")
-	filter_button_help.tooltip_text = "ドキュメント" + "\n\n" + BUTTONL_CONTROL_DESCRIPTION
-	filter_button_help.toggled.connect(_on_filter_button_toggled.bind(filter_button_help))
-	h_box_container.add_child(filter_button_help)
-	
-	
-	
 	
 	
 	scripts_container.add_child(my_plugin_action_container)
 	scripts_container.move_child(my_plugin_action_container, 1)
 	
 	
-	
 	var menu_buttons_parent:Container = scripts_container.get_parent().get_parent().get_parent().find_child("*HBoxContainer*", false, false)
-	
-	var dropdowns:Array[MenuButton]
-	dropdowns.assign(menu_buttons_parent.find_children("*MenuButton*", "MenuButton", true, false) )
-	
-	dropdown_action = DropdownAction.new(dropdowns)
+	var menu_button_list:Array[MenuButton]
+	menu_button_list.assign(menu_buttons_parent.find_children("*MenuButton*", "MenuButton", true, false) )
+	dropdown_action = DropdownAction.new(menu_button_list)
 	dropdown_action._enter()
 	
-
+	
+	script_list_menu.visibility_changed.connect(_on_script_list_menu_visibility_changed)
+	script_list_menu.id_pressed.connect(_on_script_list_menu_id_pressed)
 
 
 func _exit_tree() -> void:
-	# Clean-up of the plugin goes here.
-	pass
 	if dropdown_action:
 		dropdown_action._exit()
 	my_plugin_action_container.queue_free()
@@ -195,6 +89,20 @@ func update_autoload() -> void:
 		p = p.trim_prefix("*")
 		autoload_list.append(ResourceUID.ensure_path(p))
 
+
+func bind_filter_toggle_button(button:Button, icon_name:StringName, tooltip_text:String, container:Container) -> void:
+	const BUTTONL_CONTROL_DESCRIPTION:String = "Ctrlを押しながらクリックすると単独でフィルタリング切り替えが出来ます\nShiftを押しながらクリックすると全て有効に出来ます"
+	bind_toggle_button(button, icon_name, tooltip_text + "\n\n" + BUTTONL_CONTROL_DESCRIPTION, _on_filter_button_toggled.bind(button), container)
+	button.set_pressed_no_signal(true)
+
+
+func bind_toggle_button(button:Button, icon_name:StringName, tooltip_text:String, toggled_connect:Callable, container:Container) -> void:
+	button.toggle_mode = true
+	super_flat_button_theming(button)
+	button.icon = get_editor_icon(icon_name)
+	button.tooltip_text = tooltip_text
+	button.toggled.connect(toggled_connect)
+	container.add_child(button)
 
 
 func _on_filter_button_toggled(toggled_on: bool, button:Button) -> void:
@@ -342,7 +250,7 @@ func update() -> void:
 					remove_idx_list.append(i)
 			continue
 		
-		if script.is_built_in() or ResourceLoader.exists(path.get_basename() + ".tscn", "PackedScene") or ResourceLoader.exists(path.get_basename() + ".scn", "PackedScene"):
+		if script.is_built_in() or get_scene_path_from_script_path(path):
 			if not class_icon_mode_button.button_pressed:
 				script_list.set_item_icon(i, get_editor_icon(&"PackedScene"))
 			
@@ -373,7 +281,114 @@ func update() -> void:
 	script_list.add_icon_item(null, false)
 	script_list.set_item_tooltip(script_list.item_count - 1, PLUGIN_UPDATED_ITEM_META)
 
-#@export_tool_button("", "Environment")
+
+func _on_script_list_menu_visibility_changed():
+	if not script_list_menu.visible:
+		return
+	
+	var selected:int = script_list.get_selected_items()[0]
+	if script_list.get_item_icon(selected) != get_editor_icon(&"PackedScene"):
+		return
+	
+	
+	var insert_idx:int
+	for i in script_list_menu.item_count:
+		if script_list_menu.get_item_text(i) == "Show in FileSystem":
+			insert_idx = i + 1
+			break
+	
+	for i in SCRIPT_LIST_MENU_ADD_ITEM_MAP.size():
+		if SCRIPT_LIST_MENU_ADD_ITEM_MAP.values()[i] == SEPATOR_ID:
+			script_list_menu.add_separator(SCRIPT_LIST_MENU_ADD_ITEM_MAP.keys()[i], SCRIPT_LIST_MENU_ADD_ITEM_MAP.values()[i])
+		else:
+			script_list_menu.add_item(SCRIPT_LIST_MENU_ADD_ITEM_MAP.keys()[i], SCRIPT_LIST_MENU_ADD_ITEM_MAP.values()[i])
+		script_list_menu.set_item_index(script_list_menu.item_count - 1 , insert_idx + i)
+
+
+func _on_script_list_menu_id_pressed(id:int) -> void:
+	if not SCRIPT_LIST_MENU_ADD_ITEM_MAP.values().has(id):
+		return
+	
+	
+	var selected:int = script_list.get_selected_items()[0]
+	var script_path:String = script_list.get_item_tooltip(selected)
+	var scene_path:String = get_scene_path_from_script_path(script_path)
+	if scene_path.is_empty():
+		return
+	
+	if id == SCRIPT_LIST_MENU_ADD_ITEM_MAP["Copy Scene File Path"]:
+		DisplayServer.clipboard_set(scene_path)
+	if id == SCRIPT_LIST_MENU_ADD_ITEM_MAP["Copy Scene File UID"]:
+		DisplayServer.clipboard_set(ResourceUID.path_to_uid(scene_path))
+	if id == SCRIPT_LIST_MENU_ADD_ITEM_MAP["Open Scene"]:
+		EditorInterface.open_scene_from_path(scene_path)
+	if id == SCRIPT_LIST_MENU_ADD_ITEM_MAP["Scene Show in FileSystem"]:
+		EditorInterface.select_file(scene_path)
+		EditorInterface.get_file_system_dock().show()
+
+func get_script_editor() -> ScriptEditor:
+	if not script_editor:
+		script_editor = EditorInterface.get_script_editor()
+	return script_editor
+
+func get_scripts_container() -> BoxContainer:
+	if not scripts_container:
+		var filter_scripts:LineEdit
+		for i:LineEdit in script_editor.find_children("*LineEdit*", "LineEdit", true, false):
+			if i.placeholder_text == "Filter Scripts":
+				filter_scripts = i
+				break
+		scripts_container = filter_scripts.get_parent()
+	return scripts_container
+
+func get_script_list() -> ItemList:
+	if not script_list:
+		script_list = script_editor.find_child("*ItemList*", true, false)
+	return script_list
+
+func get_my_plugin_action_container() -> HBoxContainer:
+	if not my_plugin_action_container:
+		my_plugin_action_container = HBoxContainer.new()
+		my_plugin_action_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		bind_toggle_button(class_icon_mode_button, &"Object", "クラスアイコンモード", update_with_reload_by_engine.unbind(1), my_plugin_action_container)
+		
+		var scroll_container := ScrollContainer.new()
+		scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll_container.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		scroll_container.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+		scroll_container.scroll_hint_mode = ScrollContainer.SCROLL_HINT_MODE_ALL
+		my_plugin_action_container.add_child(scroll_container)
+		
+		var h_box_container := HBoxContainer.new()
+		h_box_container.size_flags_horizontal = Control.SIZE_SHRINK_END | Control.SIZE_EXPAND
+		scroll_container.add_child(h_box_container)
+		
+		bind_toggle_button(autoload_only_button, &"Environment", "Autoloadのみ表示", update_with_reload_by_engine.unbind(1), h_box_container)
+		
+		var separetor := VSeparator.new()
+		h_box_container.add_child(separetor)
+		
+		bind_filter_toggle_button(filter_button_global_class, &"CollisionShape3D", "class_nameが宣言されているスクリプト", h_box_container)
+		bind_filter_toggle_button(filter_button_scene, &"PackedScene", "同じ階層に同じ名前のシーンがあるスクリプト", h_box_container)
+		bind_filter_toggle_button(filter_button_script, &"GDScript", "他の項目に当てはまらないただのスクリプト", h_box_container)
+		bind_filter_toggle_button(filter_button_text, &"TextFile", "スクリプトではないただのテキストファイル", h_box_container)
+		bind_filter_toggle_button(filter_button_help, &"Help", "ドキュメント", h_box_container)
+	
+	return my_plugin_action_container
+
+func get_script_list_menu() -> PopupMenu:
+	if not script_list_menu:
+		script_list_menu = EditorInterface.get_script_editor().find_children("*PopupMenu*", "PopupMenu", false, false)[0]
+	return script_list_menu
+
+
+func get_scene_path_from_script_path(script_path:String) -> String:
+	if ResourceLoader.exists(script_path.get_basename() + ".tscn", "PackedScene"):
+		return script_path.get_basename() + ".tscn"
+	elif ResourceLoader.exists(script_path.get_basename() + ".scn", "PackedScene"):
+		return script_path.get_basename() + ".scn"
+	return ""
 
 
 func get_class_icon(script:Script) -> Texture2D:
